@@ -1,7 +1,7 @@
 import Konva from "konva";
-import React, { useRef, useState } from "react";
-import { Stage, Layer, Image, Transformer } from "react-konva";
-import EditorItem, { EditorItemPropsType } from "./EditorItem";
+import React, { useEffect, useState } from "react";
+import { Stage, Layer, Image } from "react-konva";
+import EditorItem, { ImageProps, TextProps } from "./EditorItem";
 import { useImage } from "react-konva-utils";
 
 const Canvas = ({
@@ -10,22 +10,38 @@ const Canvas = ({
   editorItems,
   bgUrl,
   removeItemHandler,
+  stageRef,
 }: {
   width: number;
   height: number;
-  editorItems: EditorItemPropsType[] | [];
+  editorItems: (ImageProps | TextProps)[];
   bgUrl?: string;
   removeItemHandler: (id: string) => void;
+  stageRef: React.RefObject<Konva.Stage>;
 }) => {
-  const [bgImage, bgImageState] = useImage(bgUrl || "");
+  const [bgImage] = useImage(bgUrl || "");
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
-  const stageRef = useRef<Konva.Stage>(null);
+  useEffect(() => {
+    if (editorItems.length > 0 && editorItems.at(-1)?.id) {
+      setSelectedItem(editorItems.at(-1)!.id);
+    }
+  }, [editorItems]);
 
+  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (e.target === e.target.getStage() || e.target.attrs.name === "bgLayer") {
+      setSelectedItem(null);
+    }
+  };
   return (
-    <Stage ref={stageRef} width={width} height={height}>
+    <Stage
+      ref={stageRef}
+      width={width}
+      height={height}
+      onClick={handleStageClick}
+    >
       <Layer>
-        <Image image={bgImage} width={width} height={height} name="bgImage" />
+        <Image image={bgImage} width={width} height={height} name="bgLayer" />
         {editorItems.map(
           ({
             x,
@@ -45,7 +61,6 @@ const Canvas = ({
               type={type}
               textContent={textContent}
               key={id}
-              stageRef={stageRef}
               imageUrl={imageUrl}
               id={id}
               selectedItem={selectedItem}

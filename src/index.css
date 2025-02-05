@@ -1,2 +1,29 @@
 @import "tailwindcss";
 
+@theme {
+  --font-poppins: Poppins, sans-serif;
+  --color-black-100: #353535;
+  --color-black-75: #676767;
+  --color-black-50: #9B9B9B;
+  --color-black-25: #CDCDCD;
+  --color-primary: #7209B7;
+  --color-primary-50: #7209B780;
+  --color-primary-100: #550788;
+  --color-white98: #FAFAFA;
+  --color-white97: #F7F7F8;
+  --color-red: #CB331F;
+}
+
+@layer components {
+  .button {
+    @apply px-8 py-2 text-white bg-primary font-semibold cursor-pointer disabled:bg-black-25 hover:bg-primary-100 focus:border-2 focus:border-primary-50 focus:outline-0;
+    border-radius: 5px;
+    font-size: 15px;
+    line-height: 150%;
+  }
+  .bold-32 {
+    @apply font-poppins font-bold;
+    font-size: 32px;
+    line-height: 48px;
+  }
+}
