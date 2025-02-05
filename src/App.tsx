@@ -6,126 +6,170 @@ import TextIcon from "./assets/icons/text.svg?react";
 import BackgroundIcon from "./assets/icons/background.svg?react";
 import ImgIcon from "./assets/icons/img.svg?react";
 import { EditorItemPropsType } from "./components/EditorItem";
+import defaultBgUrl from "./assets/icons/default-bg.png?url";
 
 type EditorControlerPropsType = {
-  icon: React.ReactNode;
+  children: React.ReactNode;
   label: string;
   onClickCallback: () => void;
 };
 const EditorControler = ({
-  icon,
+  children,
   label,
   onClickCallback,
 }: EditorControlerPropsType) => (
-  <div
+  <button
     onClick={onClickCallback}
-    className="text-[#676767] bg-[#F7F7F8] rounded-[10px] p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors w-[365px] h-[256px]"
+    className="text-[#676767] bg-[#F7F7F8] rounded-[10px] p-6 flex flex-col items-center justify-center cursor-pointer transition-colors w-[365px] h-[256px]  hover:bg-[#CDCDCD] focus:bg-[#F7F7F8] focus:border-4 border-[#7209B780] focus:outline-0"
   >
-    {icon}
+    {children}
     <span className="text-sm">{label}</span>
-  </div>
+  </button>
 );
 
-const editorItems = [
-  {
-    x: 100,
-    y: 500,
-    width: 350,
-    height: 120,
-    type: "text",
-    textContent: "Jaki napis",
-  },
-  {
-    x: 50,
-    y: 50,
-    width: 200,
-    height: 200,
-    type: "image",
-  },
-  {
-    x: 100,
-    y: 100,
-    width: 350,
-    height: 120,
-    type: "text",
-    textContent: "Napis po prawej",
-  },
-] satisfies EditorItemPropsType[];
-const canvasContent = {
-  text: "Create your own Poster!",
-  subtext:
-    "It's so simple. Start creating your own\nposter by clicking one of the action\nbuttons located on the right.",
-  background: "#f3d5f9",
+const id1 = crypto.randomUUID();
+const id2 = crypto.randomUUID();
+
+// const [] = [
+//   {
+//     x: 100,
+//     y: 500,
+//     width: 350,
+//     height: 120,
+//     type: "text",
+//     textContent: "Jaki napis",
+//     id: id1,
+//   },
+//   {
+//     x: 200,
+//     y: 100,
+//     width: 200,
+//     height: 200,
+//     type: "image",
+//     id: id2,
+//   },
+// ] satisfies EditorItemPropsType[];
+const defaultState = {
+  bgUrl: defaultBgUrl,
+  items: [],
 };
 const App = () => {
   const canvasParentRef = useRef<HTMLDivElement>(null);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+  const imgInputRef = useRef<HTMLInputElement>(null);
   const [size, setSize] = useState({ width: 300, height: 400 });
-  const [items, setItems] = useState(editorItems);
+  const [items, setItems] = useState<EditorItemPropsType[]>(defaultState.items);
+  const [bgUrl, setBgUrl] = useState(defaultState.bgUrl);
 
+  const setDefaultState = () => {
+    setItems(defaultState.items);
+    setBgUrl(defaultState.bgUrl);
+  };
+  useEffect(() => {
+    if (items.length && defaultState.bgUrl === bgUrl) {
+      setBgUrl("");
+    }
+  });
+  useEffect(() => {
+    if (canvasParentRef.current) {
+      const width = canvasParentRef.current?.clientWidth;
+      setSize({ width, height: (width / 4) * 5 });
+    }
+  }, [canvasParentRef.current]);
   const editorControllers = [
     {
-      icon: <TextIcon width={128} height={128} />,
+      children: <TextIcon width={128} height={128} />,
       label: "Text",
       callback: () => {
         setItems((currentItem) => [
           ...currentItem,
           {
-            x: 10,
-            y: 20,
+            x: size.width / 2 - 350 / 2,
+            y: size.height / 2 - 120,
             width: 350,
             height: 120,
+            id: crypto.randomUUID(),
             type: "text",
-            textContent: "Napis dodany klikiem",
+            textContent: "Type your text here",
           },
         ]);
-        console.log("text click");
       },
     },
     {
-      icon: <ImgIcon width={128} height={128} />,
+      children: (
+        <>
+          <ImgIcon width={128} height={128} />
+          <input
+            type="file"
+            hidden
+            ref={imgInputRef}
+            onChange={(e) => {
+              if (!e.target?.files?.[0]) return;
+              const file = e.target?.files?.[0];
+              const imageUrl = URL.createObjectURL(file);
+              setItems((currentItem) => [
+                ...currentItem,
+                {
+                  x: 200,
+                  y: 300,
+                  width: 200,
+                  height: 200,
+                  id: crypto.randomUUID(),
+                  type: "image",
+                  imageUrl,
+                },
+              ]);
+            }}
+          />
+        </>
+      ),
       label: "Image",
       callback: () => {
-        console.log("Image click");
+        imgInputRef.current?.click();
       },
     },
     {
-      icon: <BackgroundIcon width={128} height={128} />,
+      children: (
+        <>
+          <BackgroundIcon width={128} height={128} />
+          <input
+            type="file"
+            hidden
+            ref={bgInputRef}
+            onChange={(e) => {
+              if (!e.target?.files?.[0]) return;
+              const file = e.target?.files?.[0];
+              setBgUrl(URL.createObjectURL(file));
+            }}
+          />
+        </>
+      ),
       label: "Background",
       callback: () => {
-        console.log("text Background");
+        bgInputRef.current?.click();
       },
     },
   ];
-  useEffect(() => {
-    if (canvasParentRef.current) {
-      const width = canvasParentRef.current?.clientWidth;
-      const height = canvasParentRef.current?.clientHeight;
-      setSize({ width, height });
-    }
-  }, [canvasParentRef.current]);
+
+  const removeItem = (id) => {
+    setItems((currItems) => currItems.filter((item) => item.id !== id));
+  };
 
   return (
     <div className="h-screen">
       <div className="w-full max-w-[1590px] flex mx-auto my-16">
-        <div className="w-1/2 p-4 ">
+        <div className="w-1/2">
           <div
-            className="w-full h-full flex flex-col items-center justify-center text-center shadow-sm"
-            style={{ backgroundColor: canvasContent.background }}
+            className="w-full h-full flex flex-col items-center justify-center text-center shadow-sm bg-[#9B9B9B]"
             ref={canvasParentRef}
           >
             <Canvas
               width={size.width}
               height={size.height}
               editorItems={items}
+              bgUrl={bgUrl}
+              removeItemHandler={removeItem}
             />
-
-            {/* <div className="w-20 h-20 mb-4">
-              {/* <ImageIcon className="w-full h-full text-purple-700" />
-            </div>
-            <h1 className="text-2xl font-bold mb-2">{canvasContent.text}</h1>
-            <p className="text-sm text-gray-600 whitespace-pre-line">
-              {canvasContent.subtext}
-            </p> */}
           </div>
         </div>
         <div className="w-1/2 p-6 bg-white">
@@ -139,8 +183,9 @@ const App = () => {
             <button
               onClick={() => {
                 console.log("reset");
+                setDefaultState();
               }}
-              className="flex items-center px-3 py-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              className="flex items-center px-3 py-2 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors border-b-2"
             >
               <ResetIcon />
               Reset
@@ -148,16 +193,19 @@ const App = () => {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-lg font-medium mb-4">Add content</h2>
+            <h2 className="text-lg font-medium mb-4 bg-[#F7F7F8] rounded-[10px] px-4 py-6">
+              Add content
+            </h2>
             <div className="grid grid-cols-2 gap-4">
-              {editorControllers.map(({ callback, label, icon }) => {
+              {editorControllers.map(({ callback, label, children }) => {
                 return (
                   <EditorControler
                     key={label}
-                    icon={icon}
                     label={label}
                     onClickCallback={callback}
-                  />
+                  >
+                    {children}
+                  </EditorControler>
                 );
               })}
             </div>

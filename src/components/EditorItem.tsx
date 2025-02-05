@@ -1,240 +1,239 @@
 import Konva from "konva";
+import { Stage } from "konva/lib/Stage";
+import svgUrl from "../assets/icons/delete.png?url";
+import moveSvgUrl from "../assets/icons/move.png?url";
 import React, { useEffect, useRef, useState } from "react";
-import { Group, Line, Rect, Circle, Transformer, Text } from "react-konva";
-
-interface AnchorProps {
-  x: number;
-  y: number;
-  onDragMove: (e: any) => void;
-}
-
-const Anchor: React.FC<AnchorProps> = ({ x, y, onDragMove }) => {
-  return (
-    <Circle
-      x={x}
-      y={y}
-      radius={8}
-      fill="purple"
-      stroke="#666"
-      strokeWidth={2}
-      draggable
-      onDragMove={onDragMove}
-      onMouseEnter={() => (document.body.style.cursor = "pointer")}
-      onMouseLeave={() => (document.body.style.cursor = "default")}
-    />
-  );
-};
-
-type CoordinateParams = { x: number; y: number; height: number; width: number };
-const getCorners = ({ x, y, height, width }: CoordinateParams) => {
-  const LT = { x, y };
-  const LB = { x, y: y + height };
-  const RT = { x: x + width, y };
-  const RB = { x: x + width, y: y + height };
-  return { LT, LB, RB, RT };
-};
-
+import { Group, Image, Circle, Text, Transformer, Layer } from "react-konva";
+import { Html, useImage } from "react-konva-utils";
+import CircleWithIcon from "./CircleWithIcon";
 interface TextProps {
   type: "text";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
   textContent?: string;
 }
 
 interface ImageProps {
   type: "image";
+  imageUrl: string;
+}
+
+export type EditorItemPropsType = (TextProps | ImageProps) & {
+  stageRef: React.RefObject<Stage>;
+  id: string;
   x: number;
   y: number;
   width: number;
   height: number;
-}
-
-export type EditorItemPropsType = TextProps | ImageProps;
+  selectedItem: null | string;
+  setSelectedItem: React.Dispatch<React.SetStateAction<string | null>>;
+  removeItemHandler: (id: string) => void;
+};
 
 const EditorItem = (props: EditorItemPropsType) => {
-  const { x, y, width, height, type } = props;
+  const {
+    x,
+    y,
+    width,
+    height,
+    id,
+    stageRef,
+    imageUrl,
+    selectedItem,
+    setSelectedItem,
+    removeItemHandler,
+  } = props;
   const isText = (props: EditorItemPropsType): props is TextProps =>
     props.type === "text";
-  const childrenRef = useRef<Konva.Text | Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
-  const polygonRef = useRef<Konva.Line>(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const childrenRef = useRef<Konva.Text | Konva.Image>(null);
   const groupRef = useRef<Konva.Group>(null);
-  const dragCircleRef = useRef<Konva.Circle>(null);
-  const [position, setPosition] = useState({ x, y });
+  const dragRef = useRef<Konva.Group>(null);
+  const removeCircleGroupRef = useRef<Konva.Group>(null);
+  const [image] = useImage(props?.imageUrl || "");
   const [size, setSize] = useState({ width, height });
-  const [cornersPostion, setCornersPosition] = useState(
-    getCorners({ ...position, ...size })
-  );
-
-  useEffect(() => {
-    dragCircleRef.current?.setPosition({
-      x: position.x + size.width,
-      y: position.y,
-    });
-    getCorners({ ...position, ...size });
-  }, [position, size]);
-  const { LT, LB, RB, RT } = cornersPostion;
-  const polygonCoords = [LT, LB, RB, RT].map(({ x, y }) => [x, y]).flat();
-
-  const [anchorPos, setAnchorPos] = useState({ x: RB.x, y: RB.y });
-
-  // const handleResize = (anchor: any) => {
-  //   const anchorX = anchor.x();
-  //   const anchorY = anchor.y();
-
-  //   const newWidth = anchorX - position.x;
-  //   const newHeight = anchorY - position.y;
-
-  //   if (newWidth > 0 && newHeight > 0) {
-  //     setSize({ width: newWidth, height: newHeight });
-  //   }
-  // };
-
-  React.useEffect(() => {
+  const [selectedColor, setSelectedColor] = useState("#353535");
+  const colors = ["#353535", "#FFFFFF", "#CF0000", "#0055FF", "#00DA16"];
+  const handleItemClick = () => {
     if (childrenRef?.current && trRef?.current) {
+      trRef.current?.nodes([]);
       trRef.current?.nodes([childrenRef.current]);
+      groupRef.current?.moveToTop();
       trRef.current?.getLayer()?.batchDraw();
     }
-  }, [childrenRef.current]);
-  console.log(childrenRef);
-  return (
-    <>
-      <Group
-        ref={groupRef}
-        x={position.x}
-        y={position.y}
+    setSelectedItem(id);
+  };
+  useEffect(() => {
+    if (selectedItem !== id) {
+      trRef.current?.nodes([]);
+    }
+  }, [selectedItem]);
+
+  const renderChild = (childrenRef) => {
+    return isText(props) ? (
+      <>
+        <Text
+          ref={childrenRef as React.RefObject<Konva.Text>}
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          id={id}
+          fontSize={36}
+          fontStyle="bold"
+          opacity={0.25}
+          // perfectDrawEnabled={true}
+          fill={selectedColor}
+          align="center"
+          verticalAlign="middle"
+          text={props.textContent}
+          onDblClick={() => {
+            childrenRef?.current?.hide();
+            setIsEditing(true);
+          }}
+          onClick={handleItemClick}
+        />
+        <Html>
+          <textarea
+            className=" focus:outline-none "
+            autoFocus
+            placeholder="wpisz coś tutaj"
+            spellCheck="false"
+            hidden={!isEditing}
+            style={{
+              position: "absolute",
+              width: size.width + "px",
+              height: size.height + "px",
+              color: selectedColor,
+              fontSize:
+                ((
+                  childrenRef as React.RefObject<Konva.Text>
+                ).current?.fontSize() || 16) *
+                  ((
+                    childrenRef as React.RefObject<Konva.Text>
+                  ).current?.scaleX() || 1) +
+                "px",
+              fontWeight: "bold",
+              textAlign: "center",
+              textAlignLast: "center",
+              lineHeight: (
+                childrenRef as React.RefObject<Konva.Text>
+              ).current?.lineHeight(),
+            }}
+            defaultValue={(
+              childrenRef as React.RefObject<Konva.Text>
+            ).current?.text()}
+            onChange={(e) => {
+              const textNode = (childrenRef as React.RefObject<Konva.Text>)
+                .current;
+              if (!textNode) return;
+              if (textNode.opacity() === 0.25) {
+                textNode.opacity(1);
+              }
+              textNode.text(e.target.value);
+              textNode.getLayer()?.batchDraw();
+            }}
+            onBlur={() => {
+              setIsEditing(false);
+              childrenRef.current?.show();
+            }}
+          />
+        </Html>
+      </>
+    ) : (
+      <Image
+        ref={childrenRef as React.RefObject<Konva.Image>}
+        x={0}
+        y={0}
         width={size.width}
         height={size.height}
-      >
-        {/* <Line
-          points={polygonCoords}
-          stroke="black"
-          ref={polygonRef}
-          strokeWidth={2}
-          closed
-        /> */}
-        {isText(props) ? (
-          <Text
-            ref={childrenRef as React.RefObject<Konva.Text>}
-            x={position.x}
-            y={position.y}
-            width={size.width}
-            height={size.height}
-            align="center"
-            verticalAlign="middle"
-            text={props.textContent}
-          />
-        ) : (
-          <Rect
-            ref={childrenRef as React.RefObject<Konva.Rect>}
-            x={position.x}
-            y={position.y}
-            width={size.width}
-            height={size.height}
-            // fill="blue"
-            // onDragMove={() => {
-            //   setPoints(getBoundary(shapeRef.current!.getClientRect()));
-            // }}
-          />
-        )}
-        <Circle
-          ref={dragCircleRef}
-          x={RT.x}
-          y={RT.y}
-          radius={10}
-          fill="green"
-          onMouseEnter={() => groupRef?.current?.setDraggable(true)}
-          onMouseLeave={() => groupRef?.current?.setDraggable(false)}
-        />
-        <Circle
-          x={LT.x}
-          y={LT.y}
-          radius={10}
-          fill="red"
-          onClick={(mouseEvent) => mouseEvent.currentTarget?.parent?.destroy()}
-        />
-        {/* <Circle
-        ref={scaleCircleRef}
-        x={anchorPos.x}
-        y={anchorPos.y}
-        radius={10}
-        fill="purple"
-        draggable
-        onDragMove={handleDragMove}
-      /> */}
-        {/* <Anchor
-          // ref={scaleCircleRef}
-          x={position.x + size.width}
-          y={position.y + size.height}
-          onDragMove={(e) => handleResize(e.target)}
-        /> */}
-        <Transformer
-          ref={trRef}
-          flipEnabled={false}
-          rotateEnabled={false}
-          borderStrokeWidth={2}
-          borderStroke="#7209B7"
-          anchorStroke="white" // Hide anchor points
-          anchorFill="#7209B7"
-          anchorCornerRadius={20}
-          anchorStrokeWidth={0}
-          anchorSize={20}
-          //   anchorStyleFunc={(anchor) => {
-          //     anchor.lef
-          //   }}
-          enabledAnchors={["bottom-right"]}
-          //   visible={false}
-          boundBoxFunc={(oldBox, newBox) => {
-            // limit resize
-            console.log(newBox.x, position.x, newBox.y, position.y);
-            let box;
-
-            if (
-              Math.abs(newBox.width) < 5 ||
-              Math.abs(newBox.height) < 5 ||
-              newBox.x < position.x ||
-              newBox.y < position.y
-            ) {
-              console.log(" oldBox ");
-
-              box = oldBox;
-            } else {
-              console.log(" newBox ");
-
-              box = newBox;
-            }
-            dragCircleRef.current?.setPosition({
-              x: box.x + box.width,
-              y: box.y,
-            });
-            return box;
-          }}
-        />
-      </Group>
-      {/* <Transformer
+        image={image}
+        id={id}
+        fillPatternRepeat="no-repeat"
+        onClick={handleItemClick}
+      />
+    );
+  };
+  return (
+    <Group ref={groupRef} x={x} y={y} id={id}>
+      {renderChild(childrenRef)}
+      <Transformer
         ref={trRef}
         flipEnabled={false}
         rotateEnabled={false}
-        borderEnabled={false} // Hide bounding box lines
+        name="transformer"
+        borderStrokeWidth={2}
+        borderStroke="#7209B7"
         anchorStroke="white" // Hide anchor points
         anchorFill="#7209B7"
-        //   anchorStyleFunc={(anchor) => {
-        //     anchor.lef
-        //   }}
+        anchorCornerRadius={20}
+        anchorStrokeWidth={4}
+        anchorSize={24}
         enabledAnchors={["bottom-right"]}
-        //   visible={false}
         boundBoxFunc={(oldBox, newBox) => {
-          // limit resize
-          console.log({ newBox, oldBox });
-          if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
+          const pointerPos = stageRef?.current?.getPointerPosition();
+
+          if (!pointerPos) return oldBox;
+
+          const isPointerOutOfBounds =
+            pointerPos.x <= oldBox.x || // Block resizing to the left
+            pointerPos.y <= oldBox.y;
+
+          if (
+            Math.abs(newBox.width) < 5 ||
+            Math.abs(newBox.height) < 5
+            // isPointerOutOfBounds
+          ) {
             return oldBox;
           }
+          removeCircleGroupRef.current?.setPosition({
+            x: newBox.width,
+            y: 0,
+          });
+          setSize(newBox);
+          trRef.current?.getLayer()?.batchDraw();
           return newBox;
         }}
-      /> */}
-    </>
+      />
+      <CircleWithIcon
+        groupRef={dragRef}
+        x={0}
+        y={0}
+        radius={20}
+        fillPaternUrl={moveSvgUrl}
+        visible={selectedItem === id}
+        fill="white"
+        onMouseEnter={() => groupRef?.current?.setDraggable(true)}
+        onMouseLeave={() => groupRef?.current?.setDraggable(false)}
+      />
+      <CircleWithIcon
+        x={size.width}
+        y={0}
+        fill="white"
+        fillPaternUrl={svgUrl}
+        groupRef={removeCircleGroupRef}
+        visible={selectedItem === id}
+        onClick={() => removeItemHandler(id)}
+      />
+      {isText(props) &&
+        selectedItem === id &&
+        colors.map((color, index) => (
+          <Group key={color} x={10 + index * 28} y={size.height + 20}>
+            <Circle
+              radius={12}
+              fill="transparent"
+              strokeEnabled={selectedColor === color}
+              stroke={selectedColor === color ? "white" : undefined}
+              strokeWidth={selectedColor === color ? 2 : 0}
+            />
+            <Circle
+              radius={8}
+              fill={color}
+              onClick={() => setSelectedColor(color)}
+            />
+          </Group>
+        ))}
+    </Group>
   );
 };
 
