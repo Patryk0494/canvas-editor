@@ -98,7 +98,6 @@ const EditorItem = (props: EditorItemPropsType) => {
             fontSize={36}
             fontStyle="bold"
             opacity={0.25}
-            // perfectDrawEnabled={true}
             fill={selectedColor}
             align="center"
             verticalAlign="middle"

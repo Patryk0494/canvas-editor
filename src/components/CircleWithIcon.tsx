@@ -34,22 +34,13 @@ const CircleWithIcon: React.FC<CircleWithIconProps> = ({
       <Circle
         fill={fill}
         radius={radius}
-        onClick={(mouseEvent) =>
-          onClick
-            ? onClick(mouseEvent)
-            : mouseEvent.currentTarget?.parent?.destroy()
-        }
         {...circleProps}
       />
       {patternImg && (
         <Circle
           fillPatternImage={patternImg}
           radius={radius}
-          onClick={(mouseEvent) =>
-            onClick
-              ? onClick(mouseEvent)
-              : mouseEvent.currentTarget?.parent?.destroy()
-          }
+          onClick={(mouseEvent) => onClick?.(mouseEvent)}
           fillPatternX={imgWidth / 2}
           fillPatternY={imgHeight / 2}
           fillPatternRepeat="repeat"
