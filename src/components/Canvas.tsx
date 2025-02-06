@@ -1,7 +1,7 @@
 import Konva from "konva";
 import React, { useEffect, useState } from "react";
 import { Stage, Layer, Image } from "react-konva";
-import EditorItem, { ImageProps, TextProps } from "./EditorItem";
+import EditorItem, { ImageItem, TextItem } from "./EditorItem";
 import { useImage } from "react-konva-utils";
 
 const Canvas = ({
@@ -14,7 +14,7 @@ const Canvas = ({
 }: {
   width: number;
   height: number;
-  editorItems: (ImageProps | TextProps)[];
+  editorItems: (ImageItem | TextItem)[];
   bgUrl?: string;
   removeItemHandler: (id: string) => void;
   stageRef: React.RefObject<Konva.Stage>;
@@ -42,33 +42,22 @@ const Canvas = ({
     >
       <Layer>
         <Image image={bgImage} width={width} height={height} name="bgLayer" />
-        {editorItems.map(
-          ({
-            x,
-            y,
-            width,
-            height,
-            type,
-            textContent = "",
-            imageUrl = "",
-            id,
-          }) => (
-            <EditorItem
-              x={x}
-              y={y}
-              height={height}
-              width={width}
-              type={type}
-              textContent={textContent}
-              key={id}
-              imageUrl={imageUrl}
-              id={id}
-              selectedItem={selectedItem}
-              setSelectedItem={setSelectedItem}
-              removeItemHandler={removeItemHandler}
-            ></EditorItem>
-          )
-        )}
+        {editorItems.map((item) => (
+          <EditorItem
+            x={item.x}
+            y={item.y}
+            height={item.height}
+            width={item.width}
+            type={item.type}
+            textContent={item.type === "text" ? item.textContent : ""}
+            key={item.id}
+            imageUrl={item.type === "image" ? item.imageUrl : ""}
+            id={item.id}
+            selectedItem={selectedItem}
+            setSelectedItem={setSelectedItem}
+            removeItemHandler={removeItemHandler}
+          />
+        ))}
       </Layer>
     </Stage>
   );

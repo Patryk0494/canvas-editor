@@ -8,7 +8,7 @@ import ImgIcon from "./assets/icons/img.svg?react";
 import defaultBgUrl from "./assets/icons/default-bg.png?url";
 import Canvas from "./components/Canvas";
 import Dialog from "./components/Dialog";
-import { ImageProps, TextProps } from "./components/EditorItem";
+import { ImageItem, TextItem } from "./components/EditorItem";
 import EditorControler from "./components/EditorController";
 
 const defaultState = {
@@ -23,7 +23,7 @@ const App = () => {
   const stageRef = useRef<Konva.Stage>(null);
 
   const [size, setSize] = useState({ width: 300, height: 400 });
-  const [items, setItems] = useState<(TextProps | ImageProps)[]>(
+  const [items, setItems] = useState<(TextItem | ImageItem)[]>(
     defaultState.items
   );
   const [bgUrl, setBgUrl] = useState(defaultState.bgUrl);

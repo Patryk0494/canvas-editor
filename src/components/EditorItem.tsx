@@ -2,19 +2,26 @@ import Konva from "konva";
 import svgUrl from "../assets/icons/delete.png?url";
 import moveSvgUrl from "../assets/icons/move.png?url";
 import React, { useEffect, useRef, useState } from "react";
-import { Group, Image, Circle, Text, Transformer } from "react-konva";
+import { Group, Image, Circle, Text, Line } from "react-konva";
 import { Html, useImage } from "react-konva-utils";
 import CircleWithIcon from "./CircleWithIcon";
-export interface TextProps extends EditorItemStateType {
+
+type BaseEditorPropsType = {
+  selectedItem: string | null;
+  setSelectedItem: React.Dispatch<React.SetStateAction<string | null>>;
+  removeItemHandler: (id: string) => void;
+};
+export type TextItem = {
   type: "text";
   textContent?: string;
-}
+} & EditorItemStateBase;
 
-export interface ImageProps extends EditorItemStateType {
+export type ImageItem = {
   type: "image";
   imageUrl: string;
-}
-export type EditorItemStateType = {
+} & EditorItemStateBase;
+
+export type EditorItemStateBase = {
   id: string;
   x: number;
   y: number;
@@ -22,12 +29,13 @@ export type EditorItemStateType = {
   height: number;
 };
 
-export type EditorItemPropsType = {
-  selectedItem: null | string;
-  setSelectedItem: React.Dispatch<React.SetStateAction<string | null>>;
-  removeItemHandler: (id: string) => void;
-} & (TextProps | ImageProps);
+export type EditorItemPropsType =
+  | (BaseEditorPropsType & TextItem)
+  | (BaseEditorPropsType & ImageItem);
 
+const isText = (
+  props: EditorItemPropsType
+): props is BaseEditorPropsType & TextItem => props.type === "text";
 const colors = ["#353535", "#FFFFFF", "#CF0000", "#0055FF", "#00DA16"];
 
 const EditorItem = (props: EditorItemPropsType) => {
@@ -41,29 +49,48 @@ const EditorItem = (props: EditorItemPropsType) => {
     setSelectedItem,
     removeItemHandler,
   } = props;
+
   const trRef = useRef<Konva.Transformer>(null);
   const childrenRef = useRef<Konva.Text | Konva.Image>(null);
   const groupRef = useRef<Konva.Group>(null);
   const dragRef = useRef<Konva.Group>(null);
+  const resizeRef = useRef<Konva.Group>(null);
   const removeCircleGroupRef = useRef<Konva.Group>(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [image] = useImage(props?.imageUrl || "");
+  const [image] = useImage(!isText(props) ? props?.imageUrl : "");
   const [size, setSize] = useState({ width, height });
+  const [position, setPosition] = useState({ x, y });
 
   useEffect(() => {
-    const aspectRatio = image ? image.width / image.height : 1;
+    if (!image) return;
+    const aspectRatio =
+      image.width > image.height ? 200 / image.width : 200 / image.height;
 
-    setSize(
-      aspectRatio > 1
-        ? { width: width, height: height / aspectRatio }
-        : { width: width / aspectRatio, height: height }
-    );
+    setSize({
+      width: image.width * aspectRatio,
+      height: image.height * aspectRatio,
+    });
   }, [image]);
   const [selectedColor, setSelectedColor] = useState("#353535");
+  const handleResize = (e: Konva.KonvaEventObject<DragEvent>) => {
+    const { x: pointerX, y: pointerY } = e.target.getAbsolutePosition();
+    const newWidth = pointerX - position.x;
+    const newHeight = pointerY - position.y;
+    // Prevent negative width and height to stay inside bounds
+    if (newWidth > 20 && newHeight > 20) {
+      setSize({ width: newWidth, height: newHeight });
+    }
+    // Calculate new font size proportionally (optional tweak)
+    if (!isText(props)) return;
+    const newFontSize = Math.min(newWidth / 10, newHeight / 5);
 
-  const isText = (props: EditorItemPropsType): props is TextProps =>
-    props.type === "text";
+    if (newFontSize > 12) {
+      (childrenRef as React.RefObject<Konva.Text>).current?.fontSize(
+        newFontSize
+      );
+    }
+  };
 
   const handleItemClick = () => {
     if (childrenRef?.current && trRef?.current) {
@@ -83,17 +110,34 @@ const EditorItem = (props: EditorItemPropsType) => {
       }
     }
   }, [selectedItem]);
-
   return (
-    <Group ref={groupRef} x={x} y={y} id={id}>
+    <Group
+      ref={groupRef}
+      x={x}
+      y={y}
+      id={id}
+      onDragMove={(e) => {
+        setPosition({
+          x: e.currentTarget.position().x,
+          y: e.currentTarget.position().y,
+        });
+      }}
+    >
+      <Line
+        points={[0, 0, 0, size.height, size.width, size.height, size.width, 0]}
+        stroke="#7209B7"
+        strokeWidth={2}
+        visible={selectedItem === id}
+        closed
+      />
       {isText(props) ? (
         <>
           <Text
             ref={childrenRef as React.RefObject<Konva.Text>}
             x={0}
             y={0}
-            width={width}
-            height={height}
+            width={size.width}
+            height={size.height}
             id={id}
             fontSize={36}
             fontStyle="bold"
@@ -168,33 +212,6 @@ const EditorItem = (props: EditorItemPropsType) => {
           onClick={handleItemClick}
         />
       )}
-      <Transformer
-        ref={trRef}
-        flipEnabled={false}
-        rotateEnabled={false}
-        name="transformer"
-        borderStrokeWidth={2}
-        borderStroke="#7209B7"
-        anchorStroke="white" // Hide anchor points
-        anchorFill="#7209B7"
-        anchorCornerRadius={20}
-        anchorStrokeWidth={4}
-        anchorSize={24}
-        enabledAnchors={["bottom-right"]}
-        boundBoxFunc={(oldBox, newBox) => {
-          if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
-            trRef.current?.resizeEnabled(false);
-            return oldBox;
-          }
-          removeCircleGroupRef.current?.setPosition({
-            x: newBox.width,
-            y: 0,
-          });
-          setSize(newBox);
-          trRef.current?.getLayer()?.batchDraw();
-          return newBox;
-        }}
-      />
       <CircleWithIcon
         groupRef={dragRef}
         x={0}
@@ -205,6 +222,20 @@ const EditorItem = (props: EditorItemPropsType) => {
         fill="white"
         onMouseEnter={() => groupRef?.current?.setDraggable(true)}
         onMouseLeave={() => groupRef?.current?.setDraggable(false)}
+      />
+      <Circle
+        groupRef={resizeRef}
+        x={size.width}
+        y={size.height}
+        radius={12}
+        visible={selectedItem === id}
+        borderStrokeWidth={2}
+        borderStroke="#7209B7"
+        stroke="white"
+        fill="#7209B7"
+        strokeWidth={4}
+        draggable
+        onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => handleResize(e)}
       />
       <CircleWithIcon
         x={size.width}

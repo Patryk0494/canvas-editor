@@ -16,7 +16,7 @@
 
 @layer components {
   .button {
-    @apply px-8 py-2 text-white bg-primary font-semibold cursor-pointer disabled:bg-black-25 hover:bg-primary-100 focus:border-2 focus:border-primary-50 focus:outline-0;
+    @apply px-8 py-2 text-white border-2 border-primary bg-primary font-semibold cursor-pointer disabled:bg-black-25 hover:bg-primary-100 focus:border-primary-50 focus:outline-0;
     border-radius: 5px;
     font-size: 15px;
     line-height: 150%;
